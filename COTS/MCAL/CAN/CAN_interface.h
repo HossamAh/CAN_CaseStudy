@@ -37,8 +37,8 @@
 #define CAN_RX_FIFO1                (0x1)  /*!< CAN receive FIFO 1 */
 
 
-#define ENABLE 1
-#define DISABLE 0
+#define CAN_ENABLE 1
+#define CAN_DISABLE 0
 
 /*---------------------------------------------------------------------------------------------------------------------
  *  GLOBAL DATA TYPES AND STRUCTURES
@@ -144,6 +144,30 @@ typedef struct
 
 }CAN_RX_Frame_t;
 
+typedef enum
+{
+  TxMailbox0_completed,
+  TxMailbox1_completed,
+  TxMailbox2_completed,
+  TxMailbox0_Abort,
+  TxMailbox1_Abort,
+  TxMailbox2_Abort,
+  TxMailbox0_TXERR,
+  TxMailbox1_TXERR,
+  TxMailbox2_TXERR,
+  
+  
+  RX_FIFO0_FMP,
+  RX_FIFO0_FULL,
+  RX_FIFO0_FOVR,
+  RX_FIFO1_FMP,
+  RX_FIFO1_FULL,
+  RX_FIFO1_FOVR,
+  CAN_EWG_Error,//Enter Warning Error state (Active Error)  
+  CAN_EPV_Error,//Enter Passive Error state (Passive Error)  
+  CAN_BOF_Error,//Enter Bus Off Error state (Bus Off)
+  CAN_Multi_Error,//Error from the errors in Error code(ack , stuffing , format, ...)
+}CAN_notifications_t;
 /*---------------------------------------------------------------------------------------------------------------------
  *  GLOBAL FUNCTIONS
 ---------------------------------------------------------------------------------------------------------------------*/
@@ -235,5 +259,27 @@ uint8 MCAN_u8MailboxPendingStatus(uint8 mailboxNumber);
 * \Return value:   : number of messages in FIFO
 *******************************************************************************/
 uint8 MCAN_u8RX_FIFOMeassages(uint8 RX_FIFO);
+
+/******************************************************************************
+* \Syntax          : void MCAN_VoidEnableNotifications(CAN_notifications_t notification,void (*callback_ptr)())                                      
+* \Description     : Enable interrupt enable of CAN interrupt and set the callback function                                                                             
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : notification : type of notification to enable , callback_ptr ptr to callback function               
+* \Parameters (out): None                                                      
+* \Return value:   : None
+*******************************************************************************/
+void MCAN_VoidEnableNotifications(CAN_notifications_t notification,void (*callback_ptr)());
+
+/******************************************************************************
+* \Syntax          : void MCAN_VoidDisableNotifications(CAN_notifications_t notification)                                      
+* \Description     : Disable interrupt disable of CAN interrupt                                                                            
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : notification : type of notification to disable                
+* \Parameters (out): None                                                      
+* \Return value:   : None
+*******************************************************************************/
+void MCAN_VoidDisableNotifications(CAN_notifications_t notification);
 
 #endif

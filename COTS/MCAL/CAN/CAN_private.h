@@ -69,19 +69,23 @@ typedef struct
     volatile uint32 TERR0:1;
     volatile uint32      :3;
     volatile uint32 ABRQ0:1;
+   
     volatile uint32 RQCP1:1;
     volatile uint32 TXOK1:1;
     volatile uint32 ALST1:1;
     volatile uint32 TERR1:1;
     volatile uint32      :3;
     volatile uint32 ABRQ1:1;
+   
     volatile uint32 RQCP2:1;
     volatile uint32 TXOK2:1;
     volatile uint32 ALST2:1;
     volatile uint32 TERR2:1;
     volatile uint32      :3;
     volatile uint32 ABRQ2:1;
+   
     volatile uint32 CODE :2;
+    
     volatile uint32 TME0 :1;
     volatile uint32 TME1 :1;
     volatile uint32 TME2 :1;
@@ -99,15 +103,71 @@ typedef struct
     volatile uint32 RFOM   :1;
 }RFR_Reg_t;
 
+typedef union
+{
+    uint32 r;
+    struct IER_Reg_TAG
+    {
+        uint32 TMEIE:1;
+        uint32 FMPIE0:1;
+        uint32 FFIE0:1;
+        uint32 FOVIE0:1;
+        uint32 FMPIE1:1;
+        uint32 FFIE1:1;
+        uint32 FOVIE1:1;
+        uint32       :1;
+        uint32 EWGIE:1;
+        uint32 EPVIE:1;
+        uint32 BOFIE:1;
+        uint32 LECIE:1;
+        uint32       :3;
+        uint32 ERRIE:1;
+        uint32 WKUIE:1;
+        uint32 SLKIE:1;
+    }B;
+}IER_Reg_t;
+
+typedef union
+{
+    uint32 r;
+    struct ESR_Reg_TAG 
+    {
+        uint32 EWGF     :1;
+        uint32 EPVF     :1;
+        uint32 BOFF     :1;
+        uint32          :1;
+        uint32 LEC      :3;
+        uint32          :9;
+        uint32 TEC      :8;
+        uint32 REC      :8;
+    }B;
+}ESR_Reg_t;
+
+typedef union
+{
+    uint32 r;
+    struct BTR_Reg_TAG 
+    {
+        uint32 BRP      :10;
+        uint32          :6;
+        uint32 TS1      :4;
+        uint32 TS2      :3;
+        uint32          :1;
+        uint32 SJW      :2;
+        uint32          :4;
+        uint32 LBKM     :1;
+        uint32 SILM     :1;
+    }B;
+}BTR_Reg_t;
 typedef struct
 {
     volatile uint32 MCR;
     volatile uint32 MSR;
     volatile TSR_Reg_t TSR;
     volatile RFR_Reg_t RFR[2];
-    volatile uint32 IER;
-    volatile uint32 ESR;
-    volatile uint32 BTR;
+    volatile IER_Reg_t IER;
+    volatile ESR_Reg_t ESR;
+    volatile BTR_Reg_t BTR;
 }CAN_CONTROL_STATUS_t;
 
 /*******************************TX Mailbox Registers********************************************** */

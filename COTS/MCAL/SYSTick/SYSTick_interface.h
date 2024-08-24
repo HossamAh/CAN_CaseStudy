@@ -76,4 +76,26 @@ void MSYSTICK_VoidStartSYSTICK(uint32 Copy_uint8ReloadValue,void (*SysTick_CallB
 *******************************************************************************/
 void MSYSTICK_VoidDisableSysTick();
 
+/******************************************************************************
+* \Syntax          : uint32 MSYSTICK_u32GetTick()                                      
+* \Description     : return the current timer value                                                                             
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : None                    
+* \Parameters (out): None                                                      
+* \Return value:   : uint32 timer current value
+*******************************************************************************/
+uint32 MSYSTICK_u32GetTick();
+
+/******************************************************************************
+* \Syntax          : uint32 MSYSTICK_VoidDelay(uint32 Delay)                                      
+* \Description     : busy waiting delay in ms                                                                             
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : uint32 Delay: delay in ms                     
+* \Parameters (out): None                                                      
+* \Return value:   : None
+*******************************************************************************/
+uint32 MSYSTICK_VoidDelay(uint32 Delay);
+
 #endif

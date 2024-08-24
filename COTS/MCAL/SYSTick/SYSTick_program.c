@@ -60,8 +60,7 @@ void MSYSTICK_VoidStartSYSTICK(uint32 Copy_uint8ReloadValue,void (*SysTick_CallB
     /* Enable interrupt*/
     STK_CTRL->B.TICKINT = 1U;
     /*set callback function*/
-    if(SysTick_CallBack_ptr != NULL)
-        SysTick_CallBack = SysTick_CallBack_ptr;
+    SysTick_CallBack = SysTick_CallBack_ptr;
     /*enable SysTick*/
     STK_CTRL->B.ENABLE = 1U;
 }
@@ -85,17 +84,41 @@ void MSYSTICK_VoidDisableSysTick()
     (*STK_VAL) = 0U;
 }
 
+/******************************************************************************
+* \Syntax          : uint32 MSYSTICK_u32GetTick()                                      
+* \Description     : return the current timer value                                                                             
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : None                    
+* \Parameters (out): None                                                      
+* \Return value:   : uint32 timer current value
+*******************************************************************************/
+uint32 MSYSTICK_u32GetTick()
+{
+    return (*STK_VAL);
+}
 
+/******************************************************************************
+* \Syntax          : uint32 MSYSTICK_VoidDelay(uint32 Delay)                                      
+* \Description     : busy waiting delay in ms                                                                             
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : uint32 Delay: delay in ms                     
+* \Parameters (out): None                                                      
+* \Return value:   : None
+*******************************************************************************/
+uint32 MSYSTICK_VoidDelay(uint32 Delay)
+{
+    uint32 start_time = MSYSTICK_u32GetTick();
+    while(MSYSTICK_u32GetTick()>start_time-Delay);
+}
 
-/*SysTick Handler */
-
-//void SysTick_Handler(void)
-//{
-//
-//	if(SysTick_CallBack != NULL)
-//    {
-//        SysTick_CallBack();
-//    }
-//	STK_CTRL->B.COUNTFLAG = 0U;/*clear interrupt flag*/
-//
-//}
+/*SysTick Handler */ 
+void SysTick_Handler(void)
+{
+    if(SysTick_CallBack != NULL)
+    {
+        SysTick_CallBack();
+    }
+	STK_CTRL->B.COUNTFLAG = 0U;/*clear interrupt flag*/
+}

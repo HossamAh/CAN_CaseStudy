@@ -27,7 +27,46 @@
 #include "../RCC/RCC_interface.h"
 #include "../AFIO/AFIO_interface.h"
 
-// extern CAN_BitTimingConfig CAN_bitRateConfig[7];
+/*---------------------------------------------------------------------------------------------------------------------
+ *  Global Variables
+---------------------------------------------------------------------------------------------------------------------*/
+/*Tx Callback pointer to function */
+void (*CAN_TxMailbox0_Completed_Callback)();
+void (*CAN_TxMailbox1_Completed_Callback)();
+void (*CAN_TxMailbox2_Completed_Callback)();
+
+/*TX failed*/
+void (*CAN_TxMailbox0_ArbitrationERR_Callback)();//ArbitrationError
+void (*CAN_TxMailbox0_TXERR_Callback)();//transmitError
+void (*CAN_TxMailbox1_ArbitrationERR_Callback)();//ArbitrationError
+void (*CAN_TxMailbox1_TXERR_Callback)();//transmitError
+void (*CAN_TxMailbox2_ArbitrationERR_Callback)();//ArbitrationError
+void (*CAN_TxMailbox2_TXERR_Callback)();//transmitError
+
+/*TX Abort*/
+void (*CAN_TxMailbox0_Abort_Callback)();//Abort
+void (*CAN_TxMailbox1_Abort_Callback)();//Abort
+void (*CAN_TxMailbox2_Abort_Callback)();//Abort
+
+
+/*Rx Callback pointer to function */
+void (*CAN_RxFIFO0_FMP_Callback)();//receive new message
+void (*CAN_RxFIFO0_FULL_Callback)();//full fifo
+void (*CAN_RxFIFO0_FOVR_Callback)();//overrun 
+
+void (*CAN_RxFIFO1_FMP_Callback)();//receive new message
+void (*CAN_RxFIFO1_FULL_Callback)();//full fifo
+void (*CAN_RxFIFO1_FOVR_Callback)();//overrun 
+
+/*Errors Callbacks*/
+void (*CAN_EWG_Error_Callback)();//Enter Warning Error state (Active Error)  
+void (*CAN_EPV_Error_Callback)();//Enter Passive Error state (Passive Error)  
+void (*CAN_BOF_Error_Callback)();//Enter Bus Off Error state (Bus Off)
+void (*CAN_Multi_Error_Callback)();//Error from the errors in Error code(ack , stuffing , format, ...)
+
+/* Error code to use in multi_error callback function in app layer*/
+extern uint8 Error_Code;
+
 /*---------------------------------------------------------------------------------------------------------------------
  *  GLOBAL FUNCTIONS
 ---------------------------------------------------------------------------------------------------------------------*/
@@ -76,7 +115,7 @@ void MCAN_VoidInit(const CAN_InitTypeDef* pInitConfig)
     /** CHECK Time triggered communication mode **/
     
     /** CHECK Transmit FIFO priority **/
-    if(pInitConfig->TransmitFifoPriority==ENABLE)
+    if(pInitConfig->TransmitFifoPriority==CAN_ENABLE)
     /*by identifer:lowest ID has higher priority. if all IDs is equal then lowest number mailbox is sent */
     CLEAR_BIT(CAN_Control->MCR,2);//TXFP Transmit FIFO priority
     else
@@ -89,8 +128,8 @@ void MCAN_VoidInit(const CAN_InitTypeDef* pInitConfig)
     message will overwrite the previous one.
     1: Receive FIFO locked against overrun. Once a receive FIFO is full the next incoming
     message will be discarded.*/
-    // #if ReceiveFIFOLockedMode == ENABLE
-    if(pInitConfig->ReceiveFifoLocked==ENABLE)
+    // #if ReceiveFIFOLockedMode == CAN_ENABLE
+    if(pInitConfig->ReceiveFifoLocked==CAN_ENABLE)
     SET_BIT(CAN_Control->MCR,3);//discard
     else
     CLEAR_BIT(CAN_Control->MCR,3);//overwrite
@@ -101,7 +140,7 @@ void MCAN_VoidInit(const CAN_InitTypeDef* pInitConfig)
     successfully transmitted according to the CAN standard.
     1: A message will be transmitted only once, independently of the transmission result
     (successful, error or arbitration lost).*/
-    if(pInitConfig->AutoRetransmission ==DISABLE)    
+    if(pInitConfig->AutoRetransmission ==CAN_DISABLE)    
     SET_BIT(CAN_Control->MCR,4);
     else
     CLEAR_BIT(CAN_Control->MCR,4);
@@ -113,7 +152,7 @@ void MCAN_VoidInit(const CAN_InitTypeDef* pInitConfig)
     register.
     1: The Sleep mode is left automatically by hardware on CAN message detection.
     */
-   if(pInitConfig->AutoWakeUp==ENABLE)
+   if(pInitConfig->AutoWakeUp==CAN_ENABLE)
     SET_BIT(CAN_Control->MCR,5);
     else
     CLEAR_BIT(CAN_Control->MCR,5);
@@ -125,13 +164,13 @@ void MCAN_VoidInit(const CAN_InitTypeDef* pInitConfig)
     CAN_MCR register.
     1: The Bus-Off state is left automatically by hardware once 128 occurrences of 11 recessive
     bits have been monitored.*/
-    if(pInitConfig->AutoBusOff==ENABLE)
+    if(pInitConfig->AutoBusOff==CAN_ENABLE)
     SET_BIT(CAN_Control->MCR,6);
     else
     CLEAR_BIT(CAN_Control->MCR,6);
     
     /*Time stamp in TX and RX mailbox*/
-    if (pInitConfig->TimeTriggeredMode==ENABLE)
+    if (pInitConfig->TimeTriggeredMode==CAN_ENABLE)
     SET_BIT(CAN_Control->MCR,7);
     else
     CLEAR_BIT(CAN_Control->MCR,7);
@@ -141,31 +180,36 @@ void MCAN_VoidInit(const CAN_InitTypeDef* pInitConfig)
 
 
     /** Set the bit timing register **/
-    CAN_Control->BTR = (uint32) (
-		  (((CAN_bitRateConfig[BAUDRATE].TS2-1) << 20) |
-		  ((CAN_bitRateConfig[BAUDRATE].TS1-1) << 16) |
-		  (CAN_bitRateConfig[BAUDRATE].BRP-1)));
+    // CAN_Control->BTR = (uint32) (
+	// 	  (((CAN_bitRateConfig[BAUDRATE].TS2-1) << 20) |
+	// 	  ((CAN_bitRateConfig[BAUDRATE].TS1-1) << 16) |
+	// 	  (CAN_bitRateConfig[BAUDRATE].BRP-1)));
+    CAN_Control->BTR.B.TS2 = (CAN_bitRateConfig[BAUDRATE].TS2-1);
+    CAN_Control->BTR.B.TS1 = (CAN_bitRateConfig[BAUDRATE].TS1-1);
+    CAN_Control->BTR.B.BRP = (CAN_bitRateConfig[BAUDRATE].BRP-1);
+    
+    
 			
     /*Testing mode*/
     if( pInitConfig->Mode == CAN_MODE_NORMAL)
     {
-    CLEAR_BIT(CAN_Control->BTR,31);//SILM bit
-    CLEAR_BIT(CAN_Control->BTR,30);//LBKM bit
+        CAN_Control->BTR.B.SILM=0;
+        CAN_Control->BTR.B.LBKM=0;
     }
     else if( pInitConfig->Mode == CAN_MODE_SILENT)/*receive only*/
     {
-    SET_BIT(CAN_Control->BTR,31);//SILM bit
-    CLEAR_BIT(CAN_Control->BTR,30);//LBKM bit
+        CAN_Control->BTR.B.SILM=1;
+        CAN_Control->BTR.B.LBKM=0;
     }
     else if( pInitConfig->Mode == CAN_MODE_LOOPBACK)
     {
-    CLEAR_BIT(CAN_Control->BTR,31);//SILM bit
-    SET_BIT(CAN_Control->BTR,30);//LBKM bit
+        CAN_Control->BTR.B.SILM=0;
+        CAN_Control->BTR.B.LBKM=1;
     }
     else if( pInitConfig->Mode == CAN_MODE_SILENT_LOOPBACK)
     {
-    SET_BIT(CAN_Control->BTR,31);//SILM bit
-    SET_BIT(CAN_Control->BTR,30);//LBKM bit
+        CAN_Control->BTR.B.SILM=1;
+        CAN_Control->BTR.B.LBKM=1;
     }
     else{}
 
@@ -430,3 +474,368 @@ uint8 MCAN_u8RX_FIFOMeassages(uint8 RX_FIFO)
 {
     return CAN_Control->RFR[RX_FIFO].FMP;    
 }
+
+/******************************************************************************
+* \Syntax          : void MCAN_VoidEnableNotifications(CAN_notifications_t notification,void (*callback_ptr)())                                      
+* \Description     : Enable interrupt enable of CAN interrupt and set the callback function                                                                             
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : notification : type of notification to enable , callback_ptr ptr to callback function               
+* \Parameters (out): None                                                      
+* \Return value:   : None
+*******************************************************************************/
+void MCAN_VoidEnableNotifications(CAN_notifications_t notification,void (*callback_ptr)())
+{
+    switch (notification)
+    {
+    case TxMailbox0_completed:
+        CAN_Control->IER.B.TMEIE=1;
+        CAN_TxMailbox0_Completed_Callback=callback_ptr;
+        break;
+    
+    case TxMailbox1_completed:
+        CAN_Control->IER.B.TMEIE=1;
+        CAN_TxMailbox1_Completed_Callback=callback_ptr;
+        break;
+    
+    case TxMailbox2_completed:
+        CAN_TxMailbox2_Completed_Callback=callback_ptr;
+        CAN_Control->IER.B.TMEIE=1;
+        break;
+    case TxMailbox0_Abort:
+        CAN_Control->IER.B.TMEIE=1;
+        CAN_TxMailbox0_Abort_Callback=callback_ptr;
+        break;
+    
+    case TxMailbox1_Abort:
+        CAN_Control->IER.B.TMEIE=1;
+        CAN_TxMailbox1_Abort_Callback=callback_ptr;
+        break;
+    
+    case TxMailbox2_Abort:
+        CAN_TxMailbox2_Abort_Callback=callback_ptr;
+        CAN_Control->IER.B.TMEIE=1;
+        break;
+    case TxMailbox0_TXERR:
+        CAN_Control->IER.B.TMEIE=1;
+        CAN_TxMailbox0_TXERR_Callback=callback_ptr;
+        break;
+    
+    case TxMailbox1_TXERR:
+        CAN_Control->IER.B.TMEIE=1;
+        CAN_TxMailbox1_TXERR_Callback=callback_ptr;
+        break;
+    
+    case TxMailbox2_TXERR:
+        CAN_TxMailbox2_TXERR_Callback=callback_ptr;
+        CAN_Control->IER.B.TMEIE=1;
+        break;
+    
+    case RX_FIFO0_FMP:
+        CAN_RxFIFO0_FMP_Callback=callback_ptr;
+        CAN_Control->IER.B.FMPIE0=1;
+        break;
+    case RX_FIFO0_FULL:
+        CAN_RxFIFO0_FULL_Callback=callback_ptr;
+        CAN_Control->IER.B.FFIE0=1;
+        break;
+    case RX_FIFO0_FOVR:
+        CAN_RxFIFO0_FOVR_Callback=callback_ptr;
+        CAN_Control->IER.B.FOVIE0=1;
+        break;
+    case RX_FIFO1_FMP:
+        CAN_RxFIFO1_FMP_Callback=callback_ptr;
+        CAN_Control->IER.B.FMPIE1=1;
+        break;
+    case RX_FIFO1_FULL:
+        CAN_RxFIFO1_FULL_Callback=callback_ptr;
+        CAN_Control->IER.B.FFIE1=1;
+        break;
+    case RX_FIFO1_FOVR:
+        CAN_RxFIFO1_FOVR_Callback=callback_ptr;
+        CAN_Control->IER.B.FOVIE1=1;
+        break;
+    case CAN_EWG_Error:
+        CAN_EWG_Error_Callback=callback_ptr;
+        CAN_Control->IER.B.ERRIE=1;
+        CAN_Control->IER.B.EWGIE=1;
+        break;
+    case CAN_EPV_Error:
+        CAN_EPV_Error_Callback=callback_ptr;
+        CAN_Control->IER.B.ERRIE=1;
+        CAN_Control->IER.B.EPVIE=1;
+        break;
+    case CAN_BOF_Error:
+        CAN_BOF_Error_Callback=callback_ptr;
+        CAN_Control->IER.B.ERRIE=1;
+        CAN_Control->IER.B.BOFIE=1;
+        break;
+    case CAN_Multi_Error:
+        CAN_Multi_Error_Callback=callback_ptr;
+        CAN_Control->IER.B.ERRIE=1;
+        CAN_Control->IER.B.LECIE=1;
+        break;
+    default:
+        break;
+    }
+}
+
+
+/******************************************************************************
+* \Syntax          : void MCAN_VoidDisableNotifications(CAN_notifications_t notification)                                      
+* \Description     : Disable interrupt disable of CAN interrupt                                                                            
+* \Sync\Async      : Synchronous                                               
+* \Reentrancy      : Non Reentrant                                             
+* \Parameters (in) : notification : type of notification to disable                
+* \Parameters (out): None                                                      
+* \Return value:   : None
+*******************************************************************************/
+void MCAN_VoidDisableNotifications(CAN_notifications_t notification)
+{
+    switch (notification)
+    {
+    case TxMailbox0_completed:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    
+    case TxMailbox1_completed:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    
+    case TxMailbox2_completed:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    case TxMailbox0_Abort:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    
+    case TxMailbox1_Abort:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    
+    case TxMailbox2_Abort:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    case TxMailbox0_TXERR:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    
+    case TxMailbox1_TXERR:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    
+    case TxMailbox2_TXERR:
+        CAN_Control->IER.B.TMEIE=0;
+        break;
+    
+    case RX_FIFO0_FMP:
+        CAN_Control->IER.B.FMPIE0=0;
+        break;
+    case RX_FIFO0_FULL:
+        CAN_Control->IER.B.FFIE0=0;
+        break;
+    case RX_FIFO0_FOVR:
+        CAN_Control->IER.B.FOVIE0=0;
+        break;
+    case RX_FIFO1_FMP:
+        CAN_Control->IER.B.FMPIE1=0;
+        break;
+    case RX_FIFO1_FULL:
+        CAN_Control->IER.B.FFIE1=0;
+        break;
+    case RX_FIFO1_FOVR:
+        CAN_Control->IER.B.FOVIE1=0;
+        break;
+    case CAN_EWG_Error:
+        CAN_Control->IER.B.ERRIE=0;
+        CAN_Control->IER.B.EWGIE=0;
+        break;
+    case CAN_EPV_Error:
+        CAN_Control->IER.B.ERRIE=0;
+        CAN_Control->IER.B.EPVIE=0;
+        break;
+    case CAN_BOF_Error:
+        CAN_Control->IER.B.ERRIE=0;
+        CAN_Control->IER.B.BOFIE=0;
+        break;
+    case CAN_Multi_Error:
+        CAN_Control->IER.B.ERRIE=0;
+        CAN_Control->IER.B.LECIE=0;
+        break;
+    default:
+        break;
+    }
+}
+
+/*---------------------------------------------------------------------------------------------------------------------
+ *  Interrupt Handlers
+---------------------------------------------------------------------------------------------------------------------*/
+  void USB_HP_CAN1_TX_IRQHandler()
+  {
+    /*according to the state of the flags determine which callback to call*/
+    if(CAN_Control->TSR.RQCP0==1)
+    {
+        /*After transmit mailbox state turns from transmit to empty in both cases : passed or failed or aborted*/
+        if(CAN_Control->TSR.TXOK0==1)
+        {
+            if(CAN_TxMailbox0_Completed_Callback!=NULL)
+            {
+                CAN_TxMailbox0_Completed_Callback();
+            }
+        }
+        else if(CAN_Control->TSR.ALST0==1)
+        {
+            CAN_TxMailbox0_ArbitrationERR_Callback();
+        }
+        else if(CAN_Control->TSR.TERR0==1)
+        {
+            CAN_TxMailbox0_TXERR_Callback();
+        }
+        else if(CAN_Control->TSR.ABRQ0==1)
+        {
+            CAN_TxMailbox0_Abort_Callback();
+        }
+        /*clear flag*/
+        CAN_Control->TSR.RQCP0 = 1;
+    }
+    else if(CAN_Control->TSR.RQCP1==1)
+    {
+        if(CAN_Control->TSR.TXOK1==1)
+        {
+            if(CAN_TxMailbox1_Completed_Callback!=NULL)
+            {
+                CAN_TxMailbox1_Completed_Callback();
+            }
+        }
+        else if(CAN_Control->TSR.ALST1==1)
+        {
+            CAN_TxMailbox1_ArbitrationERR_Callback();
+        }
+        else if(CAN_Control->TSR.TERR1==1)
+        {
+            CAN_TxMailbox1_TXERR_Callback();
+        }
+        else if(CAN_Control->TSR.ABRQ1==1)
+        {
+            CAN_TxMailbox1_Abort_Callback();
+        }
+        /*clear flag*/
+        CAN_Control->TSR.RQCP1 = 1;
+    }
+    else if(CAN_Control->TSR.RQCP2==1)
+    {
+        if(CAN_Control->TSR.TXOK2==1)
+        {
+            if(CAN_TxMailbox2_Completed_Callback!=NULL)
+            {
+                CAN_TxMailbox2_Completed_Callback();
+            }
+        }
+        else if(CAN_Control->TSR.ALST2=1)
+        {
+            CAN_TxMailbox2_ArbitrationERR_Callback();
+        }
+        else if(CAN_Control->TSR.TERR2==1)
+        {
+            CAN_TxMailbox2_TXERR_Callback();
+        }
+        else if(CAN_Control->TSR.ABRQ2==1)
+        {
+            CAN_TxMailbox2_Abort_Callback();
+        }
+        /*clear flag*/
+        CAN_Control->TSR.RQCP2 = 1;
+    }
+  }
+  void USB_LP_CAN1_RX0_IRQHandler()
+  {
+    if(CAN_Control->IER.B.FMPIE0==1 &&CAN_Control->RFR[CAN_RX_FIFO0].FMP<3)
+    {
+        if(CAN_RxFIFO0_FMP_Callback!=NULL)
+        {
+            CAN_RxFIFO0_FMP_Callback();
+        }
+    }
+    else if(CAN_Control->IER.B.FFIE0==1 &&CAN_Control->RFR[CAN_RX_FIFO0].FULL==1)
+    {
+        if(CAN_RxFIFO0_FULL_Callback!=NULL)
+        {
+            CAN_RxFIFO0_FULL_Callback();
+        }
+        /*clear flag*/
+        CAN_Control->RFR[CAN_RX_FIFO0].FULL=0;
+    }
+    else if(CAN_Control->IER.B.FOVIE0==1 &&CAN_Control->RFR[CAN_RX_FIFO0].FOVR==1)
+    {
+        if(CAN_RxFIFO0_FOVR_Callback!=NULL)
+        {
+            CAN_RxFIFO0_FOVR_Callback();
+        }
+        /*clear flag*/
+        CAN_Control->RFR[CAN_RX_FIFO0].FOVR=0;
+    } 
+  }
+  void CAN1_RX1_IRQHandler()
+  {
+        if(CAN_Control->IER.B.FMPIE1==1 &&CAN_Control->RFR[CAN_RX_FIFO1].FMP<3)
+    {
+        if(CAN_RxFIFO1_FMP_Callback!=NULL)
+        {
+            CAN_RxFIFO1_FMP_Callback();
+        }
+    }
+    else if(CAN_Control->IER.B.FFIE1==1 &&CAN_Control->RFR[CAN_RX_FIFO1].FULL==1)
+    {
+        if(CAN_RxFIFO1_FULL_Callback!=NULL)
+        {
+            CAN_RxFIFO1_FULL_Callback();
+        }
+        /*clear flag*/
+        CAN_Control->RFR[CAN_RX_FIFO1].FULL=0;
+    }
+    else if(CAN_Control->IER.B.FOVIE1==1 &&CAN_Control->RFR[CAN_RX_FIFO1].FOVR==1)
+    {
+        if(CAN_RxFIFO1_FOVR_Callback!=NULL)
+        {
+            CAN_RxFIFO1_FOVR_Callback();
+        }
+        /*clear flag*/
+        CAN_Control->RFR[CAN_RX_FIFO1].FOVR=0;
+    } 
+  }
+  void CAN1_SCE_IRQHandler()
+  {
+    if(CAN_Control->IER.B.ERRIE==1 && CAN_Control->IER.B.EWGIE==1)
+    {
+        if(CAN_EWG_Error_Callback!=NULL)
+        {
+            CAN_EWG_Error_Callback();
+        }
+        CAN_Control->ESR.B.EWGF=0;
+    }
+    else  if(CAN_Control->IER.B.ERRIE==1 && CAN_Control->IER.B.EPVIE==1)
+    {
+        if(CAN_EPV_Error_Callback!=NULL)
+        {
+            CAN_EPV_Error_Callback();
+        }
+        CAN_Control->ESR.B.EPVF=0;
+    }
+    else if(CAN_Control->IER.B.ERRIE==1 && CAN_Control->IER.B.BOFIE==1)
+    {
+        if(CAN_BOF_Error_Callback!=NULL)
+        {
+            CAN_BOF_Error_Callback();
+        }
+        CAN_Control->ESR.B.BOFF=0;
+    }
+    else if(CAN_Control->IER.B.ERRIE==1 && CAN_Control->IER.B.LECIE>0)
+    {
+        if(CAN_Multi_Error_Callback!=NULL)
+        {
+            CAN_Multi_Error_Callback();
+            Error_Code = CAN_Control->ESR.B.LEC;
+        }
+        CAN_Control->ESR.B.LEC=0;
+    }
+  }
